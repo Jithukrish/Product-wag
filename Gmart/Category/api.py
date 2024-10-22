@@ -22,11 +22,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
             raise ValueError(f"No serializer found for action: {self.action}")
         return serializer_class
     def get_queryset(self):
-        # try:
-        #     category = ProductCategory.objects.get(cate_title='Condiments')
-        #     return ProductPage.objects.child_of(category).live()
-        # except ProductCategory.DoesNotExist:
-        #     return ProductPage.objects.none()
         return ProductCategory.objects.all() 
     def list(self, request, *args, **kwargs):
         response = {}

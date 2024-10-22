@@ -1,6 +1,4 @@
 from django.db import models
-
-# Create your models here.
 from wagtail import blocks
 from wagtail.admin.panels import FieldPanel
 from wagtail.models import Page
@@ -25,10 +23,14 @@ class ProductPage(Page):
     ]
     
     template = "product/product.html"
-    def get_context(self, request):
-        context = super().get_context(request)
-        context['products'] = ProductPage.objects.child_of(self).live()  
-        return context
+    # def get_context(self, request):
+    #     context = super().get_context(request)
+    #     context['products'] = ProductPage.objects.child_of(self).live()  
+    #     return context
+    # def get_context(self, request):
+    #     context = super().get_context(request)
+    #     context['category_slug'] = self.category.cate_title if self.category else None
+    #     return context
 
     class Meta:
         verbose_name = _("Product Page")

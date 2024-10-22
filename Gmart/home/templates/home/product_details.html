@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h1>Product Details </h1>
+<div id="product-detail"></div>
+<script>
+    const BASE_URL = 'http://127.0.0.1:8000';
+
+    function getProductDetailsUrl(productId) {
+        return `${BASE_URL}/api/v2/product/products/${productId}/`;
+    }
+
+    function constructImageUrl(imageId) {
+        const imageExtension = ".jpg";
+        return `${BASE_URL}/media/original_images/${encodeURIComponent(imageId)}${imageExtension}`;
+    }
+
+    async function fetchProductDetails(id) { 
+        const productDetailElement = document.getElementById('product-detail');
+        productDetailElement.textContent = 'Loading...';  
+
+        try {
+            const response = await fetch(getProductDetailsUrl(id));
+            
+            if (!response.ok) {
+                throw new Error(`Error fetching product details: ${response.status}`);
+            }
+
+            const product = await response.json();
+            displayProductDetails(product);
+        } catch (error) {
+            console.error('Error fetching product details:', error);
+            productDetailElement.textContent = 'Failed to load product details. Please try again later.';
+        }
+    }
+
+    function parseListValue(listValueString) {
+        if (listValueString.startsWith("<ListValue:") && listValueString.endsWith(">")) {
+            const content = listValueString.substring(listValueString.indexOf("[") + 1, listValueString.indexOf("]"));
+            return content.split(",").map(item => item.trim()).filter(Boolean).map(item => item.replace(/<Image:\s*|\s*>/g, ''));
+        }
+        return [];
+    }
+
+    function displayProductDetails(product) {
+        const productDetailElement = document.getElementById('product-detail');
+        productDetailElement.innerHTML = ''; 
+        productDetailElement.style.display = 'block'; 
+
+        if (product.result === 'success' && product.records) {
+            const { title, content } = product.records; 
+
+            const mainTitle = title || 'No Title Found';
+            productDetailElement.innerHTML += `<h3>${mainTitle}</h3>`;
+
+            if (Array.isArray(content) && content.length > 0) {
+                content.forEach(block => {
+                    if (block.type === 'struct' && block.fields) {
+                        const { main_title, category, description, available_size, tags, images } = block.fields; 
+
+                        productDetailElement.innerHTML += `<h4>${main_title?.text || 'No Title Found'}</h4>`;
+                        productDetailElement.innerHTML += `<p>${description?.value || 'No description available.'}</p>`;
+                        productDetailElement.innerHTML += `<p>Category: ${category?.value || 'No category available'}</p>`;
+                        
+                        handleListValues(available_size?.value ? parseListValue(available_size.value) : [], 'Available Sizes', productDetailElement);
+                        handleListValues(tags?.value ? parseListValue(tags.value) : [], 'Tags', productDetailElement);
+
+                        if (images && Array.isArray(images) && images.length > 0) {
+                            productDetailElement.innerHTML += '<h4>Images:</h4>';
+                            images.forEach(image => {
+                                const imageUrl = image.url || constructImageUrl(image.id);
+                                productDetailElement.innerHTML += `
+                                    <div>
+                                        <img src="${imageUrl}" alt="${image.title || 'Product Image'}" style="max-width: 100%; height: auto;" />
+                                        <p>${image.title || 'No title provided'}</p>
+                                    </div>`;
+                            });
+                        } else {
+                            productDetailElement.innerHTML += '<p>No images available.</p>'; 
+                        }
+                    }
+                });
+            } else {
+                productDetailElement.innerHTML += 'No product details found.';
+            }
+        } else {
+            productDetailElement.innerHTML = 'Product details not found.';
+        }
+    }
+
+    function handleListValues(valuesArray, title, parentElement) {
+        if (Array.isArray(valuesArray) && valuesArray.length > 0) {
+            parentElement.innerHTML += `<h4>${title}:</h4><ul>`;
+            valuesArray.forEach(item => {
+                const cleanedItem = item.replace(/['"]/g, ''); 
+                parentElement.innerHTML += `<li>${cleanedItem}</li>`;
+            });
+            parentElement.innerHTML += `</ul>`;
+        } else {
+            parentElement.innerHTML += `<p>No ${title.toLowerCase()} found.</p>`;
+        }
+    }
+
+    window.onload = fetchProductList;
+</script>
+
+
+
+{% endblock content %}

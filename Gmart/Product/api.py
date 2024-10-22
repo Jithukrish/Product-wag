@@ -5,6 +5,7 @@ from .models import ProductPage
 from Category.models import  ProductCategory
 from .serializers import ProductPageSerializer, ProductPageDetailSerializer
 from django.core.paginator import Paginator
+from wagtail.models import Page
 
 PAGINATION_PER_PAGE = 10
 
@@ -18,17 +19,88 @@ class ProductCategoryViewSet(viewsets.ModelViewSet):
         }
         return group_serializer.get(self.action, self.serializer_class)
 
+    
+
+        
+    # def get_queryset(self):
+    #     queryset = ProductPage.objects.live()
+        
+    #     name_filter = self.request.query_params.get('name')
+    #     if name_filter:
+    #         queryset = queryset.filter(title__icontains=name_filter)
+
+    #     category_slug = self.request.query_params.get('category', None)
+    #     if category_slug:
+    #         category_slug = category_slug.rstrip('/')
+    #         try:
+    #             category = ProductCategory.objects.get(slug__iexact=category_slug)
+    #             queryset = queryset.child_of(category)
+    #         except ProductCategory.DoesNotExist:
+    #             return ProductPage.objects.none()
+    #     return queryset
+   
+
     def get_queryset(self):
-    #     return ProductPage.objects.all()
-        category_title = self.request.query_params.get('category', None)
-        if category_title:
+        queryset = ProductPage.objects.live()
+        
+
+        # name filter ----------------------------------------- 
+        name_filter = self.request.query_params.get('name')
+        if name_filter:
+            queryset = queryset.filter(title__icontains=name_filter)
+
+
+
+       # Tag filter
+        # tag_filter = self.request.query_params.get('tag')
+        # if tag_filter:
+        #     filtered_products = []
+        #     for product in queryset:
+        #         for block in product.content:
+        #             if block.block_type == 'product_details':
+        #                 tags = block.value['tags'] 
+        #                 if tag_filter in tags:  
+        #                     filtered_products.append(product)
+        #                     break 
+
+        #     queryset = queryset.filter(id__in=[product.id for product in filtered_products])
+
+        tag_filter = self.request.query_params.get('tag') 
+        print("tag_filter--------------", tag_filter)  
+        if tag_filter:
+            print("inside tag filter--------------", tag_filter)
+
+            tag_filter_list = [tag.strip() for tag in tag_filter.split(',')]
+
+            filtered_products = []
+            for product in queryset:
+                for block in product.content:
+                    if block.block_type == 'product_details':
+                        tags = block.value['tags'] 
+                        if any(tag in tags for tag in tag_filter_list):  
+                            filtered_products.append(product)
+                            break  
+
+            queryset = queryset.filter(id__in=[product.id for product in filtered_products])
+
+
+    
+
+        
+
+        category_slug = self.request.query_params.get('category')
+        if category_slug:
+            category_slug = category_slug.rstrip('/') 
             try:
-                category = ProductCategory.objects.get(cate_title__iexact=category_title)
-                return ProductPage.objects.child_of(category).live()
+                category = ProductCategory.objects.get(slug__iexact=category_slug)
+                queryset = queryset.child_of(category)
             except ProductCategory.DoesNotExist:
                 return ProductPage.objects.none()
 
-        return ProductPage.objects.live()
+        
+        return queryset
+
+
       
 
     def list(self, request, *args, **kwargs):
@@ -55,20 +127,34 @@ class ProductCategoryViewSet(viewsets.ModelViewSet):
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
         return Response(response, status=status.HTTP_200_OK)
 
-    def retrieve(self, request, *args, **kwargs):
+   
+   
+  
+    def retrieve(self, request, slug=None):
+        print("Retrieve method called")
         response = {}
         try:
-            # slug = kwargs.get('slug')
-            product_id = kwargs.get('pk')
-            # product_page = get_object_or_404(self.get_queryset(), slug=slug)
-            product_page = get_object_or_404(self.get_queryset(),id=product_id)
+            product_page = get_object_or_404(ProductPage, slug=slug)
+            print("Product page retrieved successfully:", product_page)
+            
             serializer = self.get_serializer(product_page, context={'request': request})
             response['result'] = 'success'
             response['records'] = serializer.data
-        except ProductPage.DoesNotExist:
+            response['product_id'] = product_page.id
+            print(f"Product ID: {response['product_id']}")
+            
+        except Page.DoesNotExist:
             return Response({"result": "failure", "message": "No ProductPage matches the given query."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            print(f"An error occurred: {e}")
             response['result'] = 'failure'
             response['message'] = str(e)
-            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(response, status=status.HTTP_200_OK)
+
+
+ 
+
+
+        
+

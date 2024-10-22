@@ -15,6 +15,8 @@ import os
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(PROJECT_DIR)
+BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:8000/')
+# print(f"BASE_URL: {BASE_URL}")
 
 
 
